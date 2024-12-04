@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fiapeats-api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: fiapeatsapi
+      http:
+        paths:
+          - path: /fiapeats
+            pathType: Prefix
+            backend:
+              service:
+                name: tech-challenge-fiapeats-service
+                port:
+                  number: 8080

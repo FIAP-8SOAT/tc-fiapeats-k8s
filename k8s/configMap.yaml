@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  labels:
+    name: configmap
+data:
+  spring.datasource.url: "jdbc:postgresql://host.docker.internal:5432/fiapeatsdb"

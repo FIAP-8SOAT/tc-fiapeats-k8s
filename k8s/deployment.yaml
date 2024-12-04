@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fiapeats-api-deployment
+  labels:
+    app: fiapeats-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fiapeats-api
+  template:
+    metadata:
+      labels:
+        app: fiapeats-api
+    spec:
+      containers:
+        - name: fiapeats-api-container
+          image: dilanclima/tc-fiapeats-api:1.1.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: configmap
+                  key: spring.datasource.url
+            - name: DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: fiapeats-secret
+                  key: spring.datasource.username
+            - name: DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fiapeats-secret
+                  key: spring.datasource.password
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /fiapeats/actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /fiapeats/actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+      restartPolicy: Always
