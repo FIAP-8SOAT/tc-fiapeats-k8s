@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"
+  region  = "us-east-1"
   profile = "fiapeats"
 }
 
@@ -12,17 +12,27 @@ resource "aws_vpc" "eks_vpc" {
   }
 }
 
-resource "aws_subnet" "eks_subnet" {
+# Subnets em duas Zonas de Disponibilidade (us-east-1a e us-east-1b)
+resource "aws_subnet" "eks_subnet_a" {
   vpc_id                  = aws_vpc.eks_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "us-east-1a"
   tags = {
-    Name = "eks-subnet"
+    Name = "eks-subnet-a"
   }
 }
 
-# Internet Gateway
+resource "aws_subnet" "eks_subnet_b" {
+  vpc_id                  = aws_vpc.eks_vpc.id
+  cidr_block              = "10.0.2.0/24"
+  map_public_ip_on_launch = true
+  availability_zone       = "us-east-1b"
+  tags = {
+    Name = "eks-subnet-b"
+  }
+}
+
 resource "aws_internet_gateway" "eks_igw" {
   vpc_id = aws_vpc.eks_vpc.id
   tags = {
@@ -30,7 +40,6 @@ resource "aws_internet_gateway" "eks_igw" {
   }
 }
 
-# Route Table
 resource "aws_route_table" "eks_route_table" {
   vpc_id = aws_vpc.eks_vpc.id
   route {
@@ -42,23 +51,21 @@ resource "aws_route_table" "eks_route_table" {
   }
 }
 
-resource "aws_route_table_association" "eks_route_table_assoc" {
-  subnet_id      = aws_subnet.eks_subnet.id
+resource "aws_route_table_association" "eks_route_table_assoc_a" {
+  subnet_id      = aws_subnet.eks_subnet_a.id
   route_table_id = aws_route_table.eks_route_table.id
 }
 
+resource "aws_route_table_association" "eks_route_table_assoc_b" {
+  subnet_id      = aws_subnet.eks_subnet_b.id
+  route_table_id = aws_route_table.eks_route_table.id
+}
 
 resource "aws_security_group" "eks_sg" {
   vpc_id = aws_vpc.eks_vpc.id
   ingress {
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 80
-    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -79,41 +86,94 @@ resource "aws_security_group" "eks_sg" {
   }
 }
 
+resource "aws_iam_role" "eks_role" {
+  name = "eks-cluster-role"
 
-resource "aws_instance" "eks_node" {
-  ami           = "ami-0c02fb55956c7d316"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.eks_subnet.id
-  vpc_security_group_ids = [
-    aws_security_group.eks_sg.id
-  ]
-  tags = {
-    Name = "eks-node"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "eks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attachment" {
+  role       = aws_iam_role.eks_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "cni_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+
+resource "aws_eks_cluster" "eks_cluster" {
+  name     = "eks-cluster"
+  role_arn = aws_iam_role.eks_role.arn
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.eks_subnet_a.id, aws_subnet.eks_subnet_b.id]
+    security_group_ids = [aws_security_group.eks_sg.id]
   }
 }
 
+resource "aws_iam_role" "eks_node_role" {
+  name = "eks-node-role"
 
-resource "local_file" "eks_yaml_files" {
-  content = <<EOF
-  ${file("k8s/dashboard.yaml")}
-  ${file("k8s/deployment.yaml")}
-  ${file("k8s/metrics.yaml")}
-  ${file("k8s/secrets.yaml")}
-  ${file("k8s/configMap.yaml")}
-  ${file("k8s/hpa.yaml")}
-  ${file("k8s/ingress.yaml")}
-  ${file("k8s/service.yaml")}
-  ${file("k8s/service_eks.yaml")}
-  ${file("k8s/userAdmin.yaml")}
-EOF
-  filename = "eks_files.yaml"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 }
 
-
-output "ec2_instance_public_ip" {
-  value = aws_instance.eks_node.public_ip
+resource "aws_iam_role_policy_attachment" "eks_worker_node_attachment" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
-output "eks_yaml_files_path" {
-  value = local_file.eks_yaml_files.filename
+resource "aws_iam_role_policy_attachment" "ecr_read_access" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_eks_node_group" "eks_nodes" {
+  cluster_name   = aws_eks_cluster.eks_cluster.name
+  node_role_arn  = aws_iam_role.eks_node_role.arn
+  subnet_ids     = [aws_subnet.eks_subnet_a.id, aws_subnet.eks_subnet_b.id]
+  instance_types = ["t3.micro"]
+
+  scaling_config {
+    desired_size = 3
+    min_size     = 1
+    max_size     = 5
+  }
+
+  depends_on = [aws_eks_cluster.eks_cluster]
+}
+
+output "eks_cluster_endpoint" {
+  value = aws_eks_cluster.eks_cluster.endpoint
+}
+
+output "eks_cluster_ca_certificate" {
+  value = aws_eks_cluster.eks_cluster.certificate_authority[0].data
+}
+
+output "eks_node_group_name" {
+  value = aws_eks_node_group.eks_nodes.node_group_name
 }
