@@ -5,4 +5,4 @@ metadata:
   labels:
     name: configmap
 data:
-  spring.datasource.url: "jdbc:postgresql://host.docker.internal:5432/fiapeatsdb"
+  spring.datasource.url: "jdbc:postgresql://fiapeatsdb.cjyemig865vi.us-east-1.rds.amazonaws.com:5432/fiapeatsdb"

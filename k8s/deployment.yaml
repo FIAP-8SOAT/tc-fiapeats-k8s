@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: fiapeats-api-container
-          image: dilanclima/tc-fiapeats-api:1.1.0
+          image: dilanclima/tc-fiapeats-api:latest
           ports:
             - containerPort: 8080
           env:
@@ -46,13 +46,13 @@ spec:
             httpGet:
               path: /fiapeats/actuator/health
               port: 8080
-            initialDelaySeconds: 10
+            initialDelaySeconds: 90
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /fiapeats/actuator/health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 105
             periodSeconds: 10
 
       restartPolicy: Always

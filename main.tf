@@ -158,9 +158,9 @@ resource "aws_eks_node_group" "eks_nodes" {
   instance_types = ["t3.micro"]
 
   scaling_config {
-    desired_size = 3
+    desired_size = 5
     min_size     = 1
-    max_size     = 5
+    max_size     = 8
   }
 
   depends_on = [aws_eks_cluster.eks_cluster]
