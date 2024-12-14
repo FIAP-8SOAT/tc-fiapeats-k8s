@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: fiapeats-api-service
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
 spec:
   type: LoadBalancer
   ports:
