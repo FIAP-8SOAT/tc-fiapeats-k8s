@@ -14,7 +14,6 @@ Antes de iniciar, certifique-se de ter os seguintes requisitos instalados e conf
 /
 |-- main.tf            # Arquivo principal do Terraform
 |-- variables.tf       # Variáveis do Terraform
-|-- eks_files.yaml     # Manifests Kubernetes para configurações no cluster
 |-- outputs.tf         # Outputs do Terraform
 |-- README.md          # Documentação
 ```
@@ -36,14 +35,14 @@ Isso irá criar o cluster EKS e todos os recursos associados.
 ---
 
 ### 2. Aplicar as Configurações no Cluster EKS
-Depois que o ambiente estiver provisionado, utilize o `kubectl` para aplicar os arquivos de configuração:
-
-```bash
-kubectl apply -f eks_files.yaml
-```
+Depois que o ambiente estiver provisionado, utilize o `kubectl` para validar o cluster:
 
 - Certifique-se de que o **kubectl** está configurado com o `kubeconfig` correto.
-- Utilize `kubectl get nodes` para validar que o cluster está ativo.
+- Utilize o seguinte comando para verificar os nodes:
+
+```bash
+kubectl get nodes
+```
 
 ---
 
