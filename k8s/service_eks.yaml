@@ -4,7 +4,7 @@ metadata:
   name: tech-challenge-fiapeats-service
 spec:
   selector:
-    app: tech-challenge-fiapeats
+    app: fiapeats-api
   ports:
     - protocol: TCP
       port: 8080
