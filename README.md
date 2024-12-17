@@ -30,6 +30,14 @@ terraform init
 terraform apply -auto-approve
 ```
 
+
+Para executar o script de deploy, utilize o comando:
+
+```bash
+/bin/bash runDeploy.sh
+```
+
+
 Isso irá criar o cluster EKS e todos os recursos associados.
 
 ---
